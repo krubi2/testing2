@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ESP32 GPS AR Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- A-Frame and AR.js -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-ar.js@3.3.2/aframe-ar.min.js"></script>
+    <script src="https://unpkg.com/aframe-gps-entity-place/dist/aframe-gps-entity-place.min.js"></script>
+  </head>
+
+  <body style="margin: 0; overflow: hidden;">
+    <!-- Debugging UI -->
+    <div id="status" style="
+        position: absolute;
+        z-index: 999;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 10px;
+        font-family: sans-serif;
+      ">
+      ⏳ Waiting for GPS and Firebase data...
+    </div>
+
+    <!-- AR Scene -->
+    <a-scene
+      embedded
+      arjs="sourceType: webcam; gpsMinAccuracy: 1000; debugUIEnabled: true;"
+      vr-mode-ui="enabled: false"
+    >
+      <!-- Camera with GPS tracking -->
+      <a-camera gps-camera rotation-reader></a-camera>
+
+      <!-- Red box for ESP32 location -->
+      <a-box
+        id="esp32-object"
+        gps-entity-place="latitude: 0; longitude: 0"
+        color="red"
+        scale="5 5 5"
+      ></a-box>
+
+      <!-- Optional: Duck model (replace red box above if desired) -->
+      <!--
+      <a-entity
+        id="esp32-object"
+        gps-entity-place="latitude: 0; longitude: 0"
+        gltf-model="https://cdn.aframe.io/test-models/models/duck/duck.gltf"
+        scale="2 2 2"
+      ></a-entity>
+      -->
+    </a-scene>
+
+    <script>
+      const status = document.getElementById("status");
+
+      // ✅ Replace this with your actual Firebase endpoint
+      const firebaseURL =
+        "https://testing-1d292-default-rtdb.firebaseio.com/testing/location.json";
+
+      async function updateARLocation() {
+        try {
+          const res = await fetch(firebaseURL);
+          const data = await res.json();
+          console.log("Fetched GPS:", data);
+
+          if (data.latitude && data.longitude) {
+            const arEntity = document.getElementById("esp32-object");
+            arEntity.setAttribute(
+              "gps-entity-place",
+              `latitude: ${data.latitude}; longitude: ${data.longitude}`
+            );
+            status.innerText = `📍 ESP32 GPS:\nLatitude: ${data.latitude}\nLongitude: ${data.longitude}`;
+          } else {
+            status.innerText = "⚠️ Firebase missing 'latitude' or 'longitude'.";
+          }
+        } catch (err) {
+          status.innerText = "❌ Error fetching from Firebase.";
+          console.error("Fetch error:", err);
+        }
+      }
+
+      // Poll every 2 seconds
+      setInterval(updateARLocation, 2000);
+    </script>
+  </body>
+</html>
